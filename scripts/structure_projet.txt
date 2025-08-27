@@ -1,0 +1,24 @@
+extracteur_web/
+│
+├── pyproject.toml         # Définition du projet, dépendances, etc.
+├── README.md              # Documentation du projet
+│
+├── extracteur_web/        # Package principal (Python)
+│   ├── __init__.py        # Fichier vide pour que le dossier soit un module
+│   ├── aspirer_site.py    # Script principal
+│   │
+│   ├── formats/           # Sous-package pour les formats de sortie
+│   │   ├── __init__.py
+│   │   └── formats.py
+│   │
+│   └── utils/             # Sous-package pour les utilitaires
+│       ├── __init__.py
+│       ├── validation.py
+│       └── configuration.py
+│
+├── tests/                 # Répertoire pour les tests unitaires
+│   ├── __init__.py
+│   ├── test_validation.py
+│   └── test_configuration.py
+│
+└── requirements.txt       # Dépendances (optionnel, pour compatibilité)

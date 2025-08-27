@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Folders
+data/
+101 - Python pour la Data Science (FR)/
 # Distribution / packaging
 .Python
 build/
@@ -14,6 +17,7 @@ dist/
 downloads/
 eggs/
 .eggs/
+keys/
 lib/
 lib64/
 parts/
@@ -135,6 +139,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv310/
+venv311/
+venv312/
+list/
 
 # Spyder project settings
 .spyderproject

@@ -1,0 +1,24 @@
+# Requirements for Data Science Project
+# This file lists the required packages for the DataScientest project.
+pandas
+numpy
+# Data visualization libraries
+matplotlib
+seaborn
+# Machine learning libraries
+scikit-learn
+#xgbost
+# Statsmodels for statistical modeling
+statsmodels
+# Data preprocessing and feature engineering
+imblearn
+# 
+IPython
+# Jupyter for interactive notebooks
+jupyter
+# Data manipulation and analysis
+scipy
+# Data profiling and exploration
+ydata-profiling
+# For handling large datasets
+kds

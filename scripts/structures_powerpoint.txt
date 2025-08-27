@@ -1,0 +1,15 @@
+/projet_rakuten/
+│
+├── data/
+│   ├── templates/
+│   │   ├── commons/
+│   │   │   └── (éléments communs : structure de diapositives, charte graphique, etc.)
+│   │   └── (modèles de diapositives spécifiques .pptx)
+│   ├── images/
+│   │   ├── commons/
+│   │   │   └── (éléments communs : logos, icônes, éléments de charte graphique, etc.)
+│   │   └── (images spécifiques à chaque diapositive)
+│   └── (fichiers JSON par diapositive)
+├── scripts/
+│   └── generate_pptx.py
+└── rakuten_presentation.pptx (fichier généré)
