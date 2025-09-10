@@ -5,6 +5,9 @@ import sys
 import os
     # Insérez votre code ici
 from statsmodels.tsa.seasonal import seasonal_decompose
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import root_mean_squared_error
+from IPython.display import display
 
 
 print(f"Working directory: {os.getcwd()}")
@@ -104,30 +107,53 @@ def explore_column(df, column_name):
 print("🔄 Chargement des données...")
 try:
     df = pd.read_csv('data/AirPassengers.csv', header=0, index_col=0, parse_dates=True)
-    df.head()
+    display(df.head())
     print("✅ Données chargées avec succès!")
     print()
     
-    # Affichage riche du DataFrame
-    # display_dataframe_info(df, "AirPassengers Data")
-    # Exemple d'exploration d'une colonne (à décommenter si nécessaire)
-    plt.plot(df)
+    # On créé une colonne décalée de 1 mois
+    df['Passengers_lag1'] = df['#Passengers'].shift(1)
+    display(df.head())
+    # On créé une moyenne mobile sur 3 mois sur le nombre de passagers
+    df['Passengers_MA_3months'] = df['#Passengers'].rolling(window=3).mean()
+    display(df.head(10))
+    # On supprime les lignes avec des valeurs manquantes
+    df = df.dropna()
+
+    # On sépare les features et la target
+    X = df.drop('#Passengers', axis=1)
+    #X = df[['Passengers_lag1']]
+    y = df['#Passengers']
+
+    # On sépare les données en train et test (les 24 derniers mois pour le test)
+    X_train = X.iloc[:-24]
+    X_test = X.iloc[-24:]
+
+    y_train = y.iloc[:-24]
+    y_test = y.iloc[-24:]
+
+    # On crée et entraîne le modèle de régression linéaire
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    # On fait des prédictions
+    y_pred = model.predict(X_test)
+    # On évalue le modèle
+    rmse = np.sqrt(root_mean_squared_error(y_test, y_pred))
+    print(f"RMSE sur le jeu de test: {rmse:.2f}")
+    print()
+
+    # On affiche les résultats
+    plt.figure(figsize=(10, 6))
+    plt.plot(y.index, y, label='Vrai', marker='o')
+    plt.plot(y_test.index, y_pred, label='Prédit', marker='x')
+    plt.title('Prédictions vs Réel')
+    plt.xlabel('Date')
+    plt.ylabel('Nombre de passagers')
+    plt.legend()
     plt.show()
 
-    # Décomposition saisonnière simple (additive)
-    res = seasonal_decompose(df)
-    res.plot()
-    plt.show()
-
-    # Décomposition saisonnière multiplicative
-    res2 = seasonal_decompose(df, model='multiplicative')
-    res2.plot()
-    plt.show()
-
-    # Transformation logarithmique pour stabiliser la variance
-    dflog = np.log(df)
-    plt.plot(dflog)
-    plt.show()
+    input("Appuyez sur Entrée pour continuer...")
 
 except FileNotFoundError:
     print("❌ Erreur: Le fichier 'data/AirPassengers.csv' n'a pas été trouvé.")

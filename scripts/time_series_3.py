@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 import sys
 import os
     # Insérez votre code ici
+import statsmodels.api as sm    
 from statsmodels.tsa.seasonal import seasonal_decompose
+from IPython.display import display
 
 
-print(f"Working directory: {os.getcwd()}")
-print(f"Script location: {__file__}")
-print(f"Files in current dir: {os.listdir('.')}")
+# print(f"Working directory: {os.getcwd()}")
+# print(f"Script location: {__file__}")
+# print(f"Files in current dir: {os.listdir('.')}")
 # Configuration pour un affichage plus riche
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', 50)
@@ -103,32 +105,76 @@ def explore_column(df, column_name):
 # chargement des données
 print("🔄 Chargement des données...")
 try:
-    df = pd.read_csv('data/AirPassengers.csv', header=0, index_col=0, parse_dates=True)
-    df.head()
+    airpass = pd.read_csv('data/AirPassengers.csv', header=0, index_col=0, parse_dates=True)
+    display(airpass.head())
     print("✅ Données chargées avec succès!")
     print()
-    
+
+    # application du log sur les données (passage en échelle log additive)
+    airpasslog = np.log(airpass)
+    display(airpasslog.head())
+
     # Affichage riche du DataFrame
     # display_dataframe_info(df, "AirPassengers Data")
     # Exemple d'exploration d'une colonne (à décommenter si nécessaire)
-    plt.plot(df)
-    plt.show()
-
-    # Décomposition saisonnière simple (additive)
-    res = seasonal_decompose(df)
-    res.plot()
-    plt.show()
-
-    # Décomposition saisonnière multiplicative
-    res2 = seasonal_decompose(df, model='multiplicative')
-    res2.plot()
+    plt.plot(airpass)
+    plt.title('Air Passengers Over Time')
     plt.show()
 
     # Transformation logarithmique pour stabiliser la variance
-    dflog = np.log(df)
-    plt.plot(dflog)
+    plt.plot(airpasslog)
+    plt.title('Log Transformed Data')
     plt.show()
 
+    # Stationarité de la série
+    # exemple
+    epsilon = np.random.rand(100) #Bruit Blanc
+    t = np.linspace(0,10,100) # Temps
+    alpha = 1.5 #coefficient de tendance
+    total = pd.DataFrame(alpha * t + epsilon)
+    plt.plot(total)
+    plt.show()
+
+    # diffœrenciation
+    total_diff = total.diff().dropna()
+    plt.plot(total_diff)
+    plt.show()
+    
+    # On revient sur la série airpasslog
+    # Autocorrélation
+    pd.plotting.autocorrelation_plot(airpasslog)
+    plt.title('Autocorrelation Plot')
+    plt.show()
+    
+    # Création de la figure et des axes
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,7)) 
+     # Différenciation ordre 1
+    airpasslog_1 = airpasslog.diff().dropna()
+    # Série temporelle différenciée
+    airpasslog_1.plot(ax = ax1) 
+    ax1.set_title('Série différenciée d\'ordre 1')
+    # Autocorrélogramme de la série différenciée
+    pd.plotting.autocorrelation_plot(airpasslog_1, ax = ax2)
+    ax2.set_title('Autocorrélogramme de la série différenciée d\'ordre 1')
+    plt.show()
+
+    # Création de la figure et des axes
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,7)) 
+     # 2eme Différenciation d'ordre 12
+    airpasslog_2 = airpasslog_1.diff(periods=12).dropna()
+    # Série temporelle doublement différenciée
+    airpasslog_2.plot(ax = ax1) 
+    ax1.set_title('Série doublement différenciée')
+    # Autocorrélogramme de la série différenciée
+    pd.plotting.autocorrelation_plot(airpasslog_2, ax = ax2)
+    ax2.set_title('Autocorrélogramme de la série doublement différenciée')
+    plt.show()
+
+    # Test de Dickey-Fuller augmenté
+    _, p_value, _, _, _, _  = sm.tsa.stattools.adfuller(airpasslog_2)
+    print(p_value)  # p-valeur bien inférieure à 0.05, on peut considérer la série comme stationnaire.
+
+    input("Press Enter to continue...")
 except FileNotFoundError:
     print("❌ Erreur: Le fichier 'data/AirPassengers.csv' n'a pas été trouvé.")
     print("Vérifiez que le fichier existe dans le dossier 'data'.")

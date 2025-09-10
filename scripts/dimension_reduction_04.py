@@ -1,20 +1,20 @@
 import os
 import sys
 
+# Pour éviter d'avoir les messages warning
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.io as pio
-import umap
-import umap.plot
+import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+warnings.filterwarnings('ignore')
 from IPython.display import display
 from matplotlib import offsetbox
 from matplotlib.image import imread
-from sklearn.datasets import make_swiss_roll
-from sklearn.datasets import load_digits
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE, Isomap, LocallyLinearEmbedding
 
 # Configuration pour un affichage plus riche
 pd.set_option('display.max_columns', None)
@@ -22,7 +22,6 @@ pd.set_option('display.max_rows', 50)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', 50)
 
-pio.renderers.default = 'browser'
 
 def display_dataframe_info(df, title="DataFrame Info"):
     """Affiche les informations du DataFrame de manière formatée"""
@@ -111,250 +110,143 @@ def explore_column(df, column_name):
 # chargement des données
 print("🔄 Chargement des données...")
 try:
-    df_train = pd.read_csv('data/fashion-mnist_train.csv')
-    df_test = pd.read_csv('data/fashion-mnist_test.csv')
-    display(df_train.info())
-    display(df_test.info())
+    df = pd.read_csv('data/breast_cancer.csv')
+    display(df.head())
     print("✅ Données chargées avec succès!")
     print()
-    df_train = df_train[0:6000]
-    df_test = df_test[0:1000]
-    display(df_train.info())
-    display(df_test.info())
-    print("✅ Données réduites pour accélérer les calculs!")
+    display_dataframe_info(df, title="Breast Cancer Dataset Overview")
 
+    # Changer les valeurs de la colonne 'diagnosis' pour plus de clarté
+    df['diagnosis'] = df['diagnosis'].map({'M': 1, 'B': 0})
+    # Changer le type de la colonne 'diagnosis' en int
+    df['diagnosis'] = df['diagnosis'].astype("Int64")
 
-    # # On affiche une feuille plane en 3D
-    # #Définir les dimensions de la feuille
-    # longueur = 80
-    # largeur = 24
+    df = df.drop(columns=['id', 'Unnamed: 32'])
 
-    # # Générer des coordonnées x et y aléatoires pour les nuages de points
-    # n_points = 5000
-    # np.random.seed(42)  # Pour reproductibilité
-    # x = np.random.rand(n_points) * longueur
-    # y = np.random.rand(n_points) * largeur
-
-    # # Coordonnées z pour obtenir une feuille plane
-    # z = np.zeros_like(x)  
-
-    # # Créer le graphique 3D
-    # fig = go.Figure()
-
-    # # Utiliser la coordonnée x comme valeur de couleur pour le dégradé arc-en-ciel
-    # fig.add_trace(go.Scatter3d(x=x - 40, y=y, z=z, mode='markers', marker=dict(size=3, color=x, colorscale='Spectral', opacity=0.8)))
-
-    # # Configurer les étiquettes des axes
-    # fig.update_layout(scene=dict(
-    #     xaxis_title='X',
-    #     yaxis_title='Y',
-    #     zaxis_title='Z'
-    # ), scene_aspectmode='manual', scene_aspectratio=dict(x=2, y=0.5, z=1))
-
-    # # Titre du graphique
-    # fig.update_layout(title='Feuille plane vue en 3D', width=800, height=600)
-    
-    # # Afficher le graphique
-    # fig.show()
-
-    # # On affiche une feuille enroulée sur elle-même
-    # # Générer les données de la feuille enroulée (Swiss Roll)
-    # n_samples = 5000
-    # X, color = make_swiss_roll(n_samples)
-
-    # fig = go.Figure()
-
-    # fig.add_trace(go.Scatter3d(x=X[:, 0], y=X[:, 1], z=X[:, 2], mode='markers', marker=dict(size=3, color=color, colorscale='Spectral')))
-
-    # fig.update_layout(scene=dict(
-    #     xaxis_title='X',
-    #     yaxis_title='Y',
-    #     zaxis_title='Z'
-    # ), scene_aspectmode='manual', scene_aspectratio=dict(x=2, y=0.5, z=1))
-
-    # fig.update_layout(title='Feuille enroulée sur elle-même (transfomation non linéaire)', width=800, height=600)
-
-    # fig.show()
-
-    # # On projette la feuille enroulée sur les 2 axes principaux de la PCA
-    # pca = PCA(n_components = 2)
-
-    # X_2D = pca.fit_transform(X)
-
-    # fig = plt.figure()
-
-    # ax = fig.add_subplot(111)
-    # ax.scatter(X_2D[:, 0], X_2D[:, 1], cmap=plt.cm.Spectral)
-
-    # ax.set_xlabel('PCA 1')
-    # ax.set_ylabel('PCA 2')
-
-    # ax.set_title("Feuille enroulée projetée sur les 2 axes de la PCA")
-    # plt.show()
-
-    # # On affiche une feuille enroulée sur elle-même avec le plan de projection
-    # # Générer les données de la feuille enroulée (Swiss Roll)
-    # n_samples = 5000
-    # X, color = make_swiss_roll(n_samples)
-
-    # fig = go.Figure()
-
-    # fig.add_trace(go.Scatter3d(x=X[:, 0], y=X[:, 1], z=X[:, 2], mode='markers', marker=dict(size=3, color=color, colorscale='Spectral')))
-
-    # y_plane = 30
-    # x_plane = np.linspace(min(X[:, 0]), max(X[:, 0]), 100)
-    # z_plane = np.linspace(min(X[:, 2]), max(X[:, 2]), 100)
-    # x_plane, z_plane = np.meshgrid(x_plane, z_plane)
-    # y_plane = np.ones_like(x_plane) * y_plane
-
-    # fig.add_trace(go.Surface(x=x_plane, y=y_plane, z=z_plane, opacity=0.5))
-
-    # fig.update_layout(scene=dict(
-    #     xaxis_title='X',
-    #     yaxis_title='Y',
-    #     zaxis_title='Z'
-    # ), scene_aspectmode='manual', scene_aspectratio=dict(x=1, y=1, z=1))
-
-    # fig.update_layout(title='Feuille enroulée sur elle-même avec le plan de projection en violet et jaune', width=800, height=600)
-
-    # fig.show()
-
-    # # On projette la feuille enroulée sur les 2 axes principaux de l'Isomap
-    # # Générer les données de la feuille enroulée (Swiss Roll)
-    # n_samples = 5000
-    # X, color = make_swiss_roll(n_samples)
-
-    # isomap = Isomap(n_neighbors=12, n_components=2)
-    # X_isomap = isomap.fit_transform(X)
-
-    # fig = go.Figure()
-
-    # fig.add_trace(go.Scatter3d(x=X_isomap[:, 0], y=X_isomap[:, 1], z=np.zeros(X.shape[0]), mode='markers', marker=dict(size=5, color=X_isomap[:, 0], colorscale='Spectral')))
-
-    # fig.update_layout(scene=dict(
-    #     xaxis_title='X',
-    #     yaxis_title='Y',
-    #     zaxis_title='Z',
-    #     aspectmode='manual',
-    #     aspectratio=dict(x=2, y=0.5, z=1) 
-    # ))
-
-    # fig.update_layout(title="Feuille déroulée par la méthode Isomap", width=800, height=600)
-
-    # fig.show()
-
-    # Séparation des features et de la target
-    df_bis = pd.concat([df_train, df_test], axis=0)
-    target = df_bis['label']
-    data = df_bis.drop('label',axis=1)
-
-    # On projette les images sur les 2 axes principaux de la LLE
-    # lle = LocallyLinearEmbedding(n_neighbors=50, n_components=2, method='modified', random_state = 42)
-    # dataLLE = lle.fit_transform(data)
-
-    # fig = plt.figure()
-
-    # ax = fig.add_subplot(111)
-    # ax.scatter(dataLLE[:, 0], dataLLE[:, 1],  c = target, cmap=plt.cm.Spectral, alpha = .7, s = 4)
-
-    # #ax.set_xlabel('LL 1')
-    # #ax.set_ylabel('LL 2')
-
-    # ax.set_title("Manifold 2D identifié par la LLE")
-    # plt.show()
-
-    def plot_components(data, model, images=None, ax=None,
-                        thumb_frac=0.05, cmap='gray_r', prefit = False):
-        ax = ax or plt.gca()
-        
-        if not prefit :
-            proj = model.fit_transform(data)
-        else:
-            proj = data
-        ax.plot(proj[:, 0], proj[:, 1], '.b')
-        
-        if images is not None:
-            min_dist_2 = (thumb_frac * max(proj.max(0) - proj.min(0))) ** 2
-            shown_images = np.array([2 * proj.max(0)])
-            for i in range(data.shape[0]):
-                dist = np.sum((proj[i] - shown_images) ** 2, 1)
-                if np.min(dist) < min_dist_2:
-                    # On ne montre pas le points trop proches
-                    continue
-                shown_images = np.vstack([shown_images, proj[i]])
-                imagebox = offsetbox.AnnotationBbox(
-                    offsetbox.OffsetImage(images[i], cmap=cmap),
-                                        proj[i])
-                ax.add_artist(imagebox)
-
-    # fig, ax = plt.subplots(figsize=(10, 10))
-    # plot_components(data = dataLLE, model = lle, 
-    #                 images=data.values.reshape((-1, 28, 28)), 
-    #                 ax=ax, thumb_frac=0.05, prefit = True)
-    # fig.show()
-
-    # On projette les images sur les 2 axes principaux de l'Isomap
-    # isomap = Isomap(n_neighbors=50, n_components=2)
-    # dataISO = isomap.fit_transform(data)
-
-    # fig = plt.figure()
-
-    # ax = fig.add_subplot(111)
-    # ax.scatter(dataISO[:, 0], dataISO[:, 1],  c = target, cmap=plt.cm.Spectral, alpha = .7, s = 4)
-
-    # ax.set_title("Données projetées sur les 2 composantes de Isomap")
-    # plt.show()
-
-
-    # tsne = TSNE(n_components=2, method = 'barnes_hut')
-    # dataTSNE = tsne.fit_transform(data)
-
-    # fig = plt.figure()
-
-    # ax = fig.add_subplot(111)
-    # ax.scatter(dataTSNE[:, 0], dataTSNE[:, 1],  c = target, cmap=plt.cm.Spectral, alpha = .7, s = 4)
-
-    # ax.set_title("Données projetées sur les 2 axes de Tsne")
-    # plt.show()
-
-
-    # data_mant = data[target == 4]
-    # # display(data_mant.head())
-    # fig, ax = plt.subplots(figsize=(10, 10))
-    # plot_components(data_mant, tsne, images=data_mant.values.reshape((-1, 28, 28)),
-    #                 ax=ax, thumb_frac=0.1, cmap='gray_r')
-    # fig.show()
-
-    umap_model = umap.UMAP(n_neighbors = 15, min_dist = 0.1, n_components=2)
-    embedding = umap_model.fit_transform(data)
-
-    # Plot après UMAP
-    plt.figure(figsize = (10,8))
-    plt.scatter(embedding[:, 0], embedding[:, 1], c = target)
-    plt.title("Après UMAP")
+    # Afficher la matrice de corrélation
+    plt.figure(figsize=(20, 20))  # Taille de la figure
+    sns.heatmap(df.corr(), annot=True, cmap='viridis');
     plt.show()
 
+    # La variable cible : 'diagnosis'
+    target = df['diagnosis']
 
-    mapper = umap.UMAP(n_neighbors = 15, min_dist = 0.1, n_components = 2).fit(data)
-    umap.plot.points(mapper, labels=target)
-    umap.plot.plt.show() 
+    # Supression de 'diagnosis'
+    df.drop('diagnosis', axis=1, inplace=True)
+
+    sc = StandardScaler()
+    Z = sc.fit_transform(df)
+    display(Z.shape)
+
+    pca = PCA()
+    # Contient les coordonnées de l'ACP sur les lignes.
+    coord_pca = pca.fit_transform(Z)
     
-    digits = load_digits()
+    print(f"Variance expliquée par chaque composante :\n{pca.explained_variance_ratio_}")
+    print(f"\nVariance totale expliquée : {pca.explained_variance_ratio_.sum()}")
+    print(f"\nVariance cumulée expliquée : {pca.explained_variance_ratio_.cumsum()}")
+    # Affichage des deux premières composantes principales
+    plt.figure(figsize=(10, 7))
+    sns.scatterplot(x=coord_pca[:, 0], y=coord_pca[:, 1], hue=target, palette=['green', 'red'])
+    plt.title('Projection des données sur les deux premières composantes principales')
+    plt.xlabel('Première composante principale')
+    plt.ylabel('Deuxième composante principale')
+    plt.legend(title='Diagnostic', labels=['Bénin', 'Malin'])
+    plt.show()  
+    
+    plt.figure()
+    plt.xlim(0,30)
+    plt.plot(pca.explained_variance_ratio_)
+    plt.show()  
 
-    embedding = umap.UMAP().fit_transform(digits.data)
-    embedding_bis =  umap.UMAP(n_neighbors=5,
-                        min_dist=0.3,
-                        metric='correlation').fit_transform(digits.data)
+    plt.figure()
+    plt.xlim(0,30)
+    plt.xlabel('Nombre de composantes')
+    plt.ylabel('Part de variance expliquée')
+    plt.axhline(y = 0.9, color ='r', linestyle = '--')
+    plt.plot(pca.explained_variance_ratio_.cumsum())
+    plt.show()  
 
-    mapper = umap.UMAP().fit(digits.data)
-    umap.plot.points(mapper, labels=digits.target)
-    umap.plot.plt.show() 
+    # Camembert de la répartition de la part de variance expliquée par chaque axe.
+    n_pca = 6
+    L1 = list(pca.explained_variance_ratio_[0:n_pca])
+    L1.append(sum(pca.explained_variance_ratio_[n_pca:31]))
 
+    plt.pie(L1, labels=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'Autres'], 
+            autopct='%1.3f%%');    
+    plt.show()
+
+    # Composantes principales et variances associées
+    component_0 = pca.components_[0,:]
+    explained_var_0 = pca.explained_variance_[0]
+
+    component_1 = pca.components_[1,:]
+    explained_var_1 = pca.explained_variance_[1]
+
+    # Corrélations entre les variables initiales et les deux premières composantes principales
+    corr_axe0 = component_0 * np.sqrt(explained_var_0)
+    display(corr_axe0)
+
+    corr_axe1 = component_1 * np.sqrt(explained_var_1)
+    display(corr_axe1)
+
+    # Tableau des charges factorielles
+    charges_factorielles = pd.DataFrame(
+    [corr_axe0, corr_axe1],
+    columns=df.columns,
+    index=['Axe 0', 'Axe 1'])
+
+    display(charges_factorielles)
+    # Cercle des corrélations
+    def draw_correlation_circle(df_charges_factorielles, pca, arrow_length=0.01, label_rotation=0):
+        fig, ax = plt.subplots(figsize=(8, 8))
+        for i, var in enumerate(df_charges_factorielles.columns):
+            x = df_charges_factorielles.loc['Axe 0', var]
+            y = df_charges_factorielles.loc['Axe 1', var]
+            ax.arrow(0, 0, x, y, head_width=arrow_length, head_length=arrow_length, fc='gray', ec='gray')
+            ax.text(x, y, var,
+                    ha='center', va='center',
+                    fontsize=9, rotation=label_rotation, clip_on=True)
+        circle = plt.Circle((0, 0), 1, facecolor='none', edgecolor='black')
+        ax.add_artist(circle)
+        ax.set_xlim(-1.1, 1.1)
+        ax.set_ylim(-1.1, 1.1)
+        ax.set_aspect('equal', adjustable='box')
+        ax.set_xlabel('Axe 0 (PC0)')
+        ax.set_ylabel('Axe 1 (PC1)')
+        ax.set_title('Cercle des Corrélations')
+        plt.grid()
+        plt.show()
+        
+
+    # Appelez la fonction pour tracer le cercle de corrélation
+    draw_correlation_circle(charges_factorielles, pca)
+
+    # Préparation des données pour le graphique    
+    df_plot = pd.DataFrame(coord_pca[:, :2], columns=["PC1", "PC2"])  
+    df_plot["target"] = pd.Series(target).reset_index(drop=True)
+
+    # Affichage du graphique
+    plt.figure(figsize=(8,6))
+    sns.scatterplot(
+        data=df_plot,
+        x='PC1', y='PC2',
+        hue='target',           # coloration selon la variable cible
+        palette='Set2',         # ou 'viridis', 'coolwarm', etc.
+        s=60, edgecolor='k'
+    )
+    plt.title("Projection PCA - composantes 1 et 2")
+    plt.xlabel("PC1")
+    plt.ylabel("PC2")
+    plt.legend(title='Cible')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
     # Pour bloquer la fenêtre d'affichage
     input('Appuyez Entrée pour quitter')
 
 except FileNotFoundError:
-    print("❌ Erreur: Le fichier 'data/AirPassengers.csv' n'a pas été trouvé.")
+    print("❌ Erreur: Le fichier 'data/breast_cancer.csv' n'a pas été trouvé.")
     print("Vérifiez que le fichier existe dans le dossier 'data'.")
     sys.exit(1)
 except Exception as e:

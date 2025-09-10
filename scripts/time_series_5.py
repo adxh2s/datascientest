@@ -1,10 +1,12 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from prophet import Prophet
 import sys
 import os
+from IPython.display import display
     # Insérez votre code ici
-from statsmodels.tsa.seasonal import seasonal_decompose
+
 
 
 print(f"Working directory: {os.getcwd()}")
@@ -103,31 +105,117 @@ def explore_column(df, column_name):
 # chargement des données
 print("🔄 Chargement des données...")
 try:
-    df = pd.read_csv('data/AirPassengers.csv', header=0, index_col=0, parse_dates=True)
-    df.head()
+    df = pd.read_csv('data/AirPassengers.csv', parse_dates=True)
+    print("✅ df head")
+    display(df.head())
     print("✅ Données chargées avec succès!")
     print()
     
-    # Affichage riche du DataFrame
-    # display_dataframe_info(df, "AirPassengers Data")
-    # Exemple d'exploration d'une colonne (à décommenter si nécessaire)
-    plt.plot(df)
+    # Renommer les colonnes pour Prophet
+    df = df.rename(columns={"Month": "ds", "#Passengers": "y"})
+     print("✅ df rename ")
+    display(df.head())
+
+    # Séparation train et test selon la chronologie
+    df_train = df.iloc[:-24]
+    df_test = df.iloc[-24:]
+
+    # instanciation modele Prophet et ajustement aux données train
+    model = Prophet()
+    model.fit(df_train)
+
+    # données futures sur 24 mois
+    future = model.make_future_dataframe(periods=24, freq='ME')
+     print("✅ future")
+    display(future.head())
+    display(future.tail())
+    forecast = model.predict(future)
+
+    print("✅ Forecast")
+    model.plot(forecast)
+    display(forecast)
+    model.plot_components(fcst=forecast)
+
+    from sklearn.metrics import root_mean_squared_error
+
+    rmse = root_mean_squared_error(df_test['y'], forecast['yhat'].tail(24))
+    print(f'Erreur quadratique moyenne (RMSE) : {rmse}')
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(df_test['ds'], df['y'].tail(24), label='Valeurs réelles')
+    plt.plot(df_test['ds'], forecast['yhat'].tail(24), label='Prédictions', linestyle='--')
+    plt.fill_between(df_test['ds'], forecast['yhat_lower'].tail(24), forecast['yhat_upper'].tail(24), 
+                    color='orange', alpha=0.15, label='Intervalle de confiance (80%)')
+    plt.title('Prédictions de Prophet')
+    plt.xlabel('Date')
+    plt.xticks(df_test['ds'], rotation=45)
+    plt.ylabel('Nombre de passagers')
+    plt.legend()
     plt.show()
 
-    # Décomposition saisonnière simple (additive)
-    res = seasonal_decompose(df)
-    res.plot()
+    param_fixed = {  
+        'seasonality_mode': 'multiplicative',
+        'daily_seasonality': False,
+        'weekly_seasonality': False,
+        'yearly_seasonality': True
+    }
+
+    param_grid = {  
+        'changepoint_prior_scale': [0.01, 0.1, 0.5],
+        'seasonality_prior_scale': [0.1, 1, 10, 15],
+        'changepoint_range': [0.5, 0.75, 0.95]
+    }
+
+    import itertools
+    import numpy as np
+    from prophet.diagnostics import cross_validation
+    from prophet.diagnostics import performance_metrics
+
+
+    # Generate all combinations of parameters
+    all_params = [dict(zip(param_grid.keys(), v)) for v in itertools.product(*param_grid.values())]
+    rmses = []  # Store the RMSEs for each params here
+
+    # Use cross validation to evaluate all parameters
+    for params in all_params:
+        model_cv = Prophet(**param_fixed, **params).fit(df_train)  # Fit model with given params
+        df_cv = cross_validation(model_cv, initial='2920 days', period='365 days', horizon = '365 days', parallel="threads")
+        df_p = performance_metrics(df_cv, rolling_window=1)
+        rmses.append(df_p['rmse'].values[0])
+
+    # Find the best parameters
+    tuning_results = pd.DataFrame(all_params)
+    tuning_results['rmse'] = rmses
+    display(tuning_results)
+
+    best_params = all_params[np.argmin(rmses)]
+    best_score = tuning_results['rmse'].min()
+    print(best_params)
+    print(best_score)
+
+    model_tuned = Prophet(**best_params, **param_fixed)
+    model_tuned.fit(df_train)
+    predictions_tuned = model_tuned.predict(future)
+
+    model_tuned.plot(predictions_tuned)
+    model_tuned.plot_components(predictions_tuned)
+
+    rmse = root_mean_squared_error(df_test['y'], predictions_tuned['yhat'].tail(24))
+    print(f'Erreur quadratique moyenne (RMSE) : {rmse}')
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(df_test['ds'], df['y'].tail(24), label='Valeurs réelles')
+    plt.plot(df_test['ds'], predictions_tuned['yhat'].tail(24), label='Prédictions', linestyle='--')
+    plt.fill_between(df_test['ds'], predictions_tuned['yhat_lower'].tail(24), predictions_tuned['yhat_upper'].tail(24), 
+                    color='orange', alpha=0.15, label='Intervalle de confiance (80%)')
+    plt.title('Prédictions du modèle Prophet optimisé')
+    plt.xlabel('Date')
+    plt.xticks(df_test['ds'], rotation=45)
+    plt.ylabel('Nombre de passagers')
+    plt.legend()
     plt.show()
 
-    # Décomposition saisonnière multiplicative
-    res2 = seasonal_decompose(df, model='multiplicative')
-    res2.plot()
-    plt.show()
-
-    # Transformation logarithmique pour stabiliser la variance
-    dflog = np.log(df)
-    plt.plot(dflog)
-    plt.show()
+    input("Press Enter to continue...")
 
 except FileNotFoundError:
     print("❌ Erreur: Le fichier 'data/AirPassengers.csv' n'a pas été trouvé.")

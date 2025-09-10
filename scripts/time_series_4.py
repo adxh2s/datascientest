@@ -4,12 +4,15 @@ import matplotlib.pyplot as plt
 import sys
 import os
     # Insérez votre code ici
+import statsmodels.api as sm    
 from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.graphics.tsaplots import plot_pacf, plot_acf
+from IPython.display import display
 
 
-print(f"Working directory: {os.getcwd()}")
-print(f"Script location: {__file__}")
-print(f"Files in current dir: {os.listdir('.')}")
+# print(f"Working directory: {os.getcwd()}")
+# print(f"Script location: {__file__}")
+# print(f"Files in current dir: {os.listdir('.')}")
 # Configuration pour un affichage plus riche
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', 50)
@@ -103,32 +106,71 @@ def explore_column(df, column_name):
 # chargement des données
 print("🔄 Chargement des données...")
 try:
-    df = pd.read_csv('data/AirPassengers.csv', header=0, index_col=0, parse_dates=True)
-    df.head()
+    airpass = pd.read_csv('data/AirPassengers.csv', header=0, index_col=0, parse_dates=True)
+    display(airpass.head())
     print("✅ Données chargées avec succès!")
     print()
-    
-    # Affichage riche du DataFrame
-    # display_dataframe_info(df, "AirPassengers Data")
-    # Exemple d'exploration d'une colonne (à décommenter si nécessaire)
-    plt.plot(df)
+
+    # application du log sur les données (passage en échelle log additive) Transformée logarithmique
+    airpasslog = np.log(airpass)
+    display(airpasslog.head())
+
+    airpasslog_1 = airpasslog.diff().dropna() #Differenciation simple 
+    airpasslog_2 = airpasslog_1.diff(periods = 12).dropna() #Différenciation d'ordre 12
+
+    # Trace des fonctions d'autocorrélation et d'autocorrélation partielle
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,7))
+    # autocorrélation
+    plot_acf(airpasslog_2, lags = 36, ax=ax1)
+    ax1.set_title('Fonction d\'autocorrélation')
+    # autocorrélation partielle
+    ax2.set_title('Fonction d\'autocorrélation partielle')
+    plot_pacf(airpasslog_2, lags = 36, ax=ax2)
+    # Affichage
     plt.show()
 
-    # Décomposition saisonnière simple (additive)
-    res = seasonal_decompose(df)
-    res.plot()
+    # Ajustement d'un modèle SARIMA
+    # d = 1 (différenciation simple)
+    # D = 1 (différenciation saisonnière)
+    # p = 1 (ordre de l'AR)
+    # q = 1 (ordre du MA)
+    # P = 0 (ordre de l'AR saisonnier)
+    # Q = 1 (ordre du MA saisonnier)
+    # m = 12 (période saisonnière mensuelle)
+    # (p,d,q)(P,D,Q)m avec p=1,d=1,q=1,P=0,D=1,Q=1,m=12
+    model=sm.tsa.SARIMAX(airpasslog,order=(1,1,1),seasonal_order=(0,1,1,12))
+    sarima=model.fit()
+    print(sarima.summary())
+
+    # On relance en ajoutant p=0 car la p-value était trop élevée avec le modèle précédent
+    model = sm.tsa.SARIMAX(airpasslog,order=(0,1,1),seasonal_order=(0,1,1,12))
+    sarima=model.fit()
+    print(sarima.summary())
+
+    import datetime
+    pred = np.exp(sarima.predict(132, 143))#Prédiction et passage à l'exponentielle
+
+    airpasspred = pd.concat([airpass, pred])#Concaténation des prédictions
+
+    plt.plot(airpasspred) #Visualisation
+    plt.axvline(x= datetime.date(1960,1,1), color='red'); # Ajout de la ligne verticale
+    plt.title('Prédictions SARIMA')
+    plt.show()  
+
+    prediction = sarima.get_forecast(steps =12).summary_frame()  #Prédiction avec intervalle de confiance
+    # Préparation du graphique
+    fig, ax = plt.subplots(figsize = (15,5))
+    # afficage de la série initiale
+    plt.plot(airpass)
+    prediction = np.exp(prediction) #Passage à l'exponentielle
+    # Moyenne prédite
+    prediction['mean'].plot(ax = ax, style = 'k--')
+    # Intervalle de confiance
+    ax.fill_between(prediction.index, prediction['mean_ci_lower'], prediction['mean_ci_upper'], color='k', alpha=0.1)
+    plt.title('Prévisions SARIMA pour les 12 prochains mois')
     plt.show()
 
-    # Décomposition saisonnière multiplicative
-    res2 = seasonal_decompose(df, model='multiplicative')
-    res2.plot()
-    plt.show()
-
-    # Transformation logarithmique pour stabiliser la variance
-    dflog = np.log(df)
-    plt.plot(dflog)
-    plt.show()
-
+    input("Press Enter to continue...")
 except FileNotFoundError:
     print("❌ Erreur: Le fichier 'data/AirPassengers.csv' n'a pas été trouvé.")
     print("Vérifiez que le fichier existe dans le dossier 'data'.")
