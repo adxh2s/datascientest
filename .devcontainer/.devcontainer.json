@@ -1,0 +1,13 @@
+{
+  "name": "TF GPU Dev",
+  "image": "tensorflow/tensorflow:latest-gpu-jupyter",
+  "runArgs": ["--gpus", "all"],
+  "workspaceFolder": "/workspace",
+  "mounts": ["source=${localWorkspaceFolder},target=/workspace,type=bind"],
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-python.vscode-pylance"]
+    }
+  },
+  "postStartCommand": "python -c \"import tensorflow as tf; print(tf.__version__); print(tf.config.list_physical_devices('GPU'))\""
+}
