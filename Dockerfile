@@ -11,6 +11,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
 WORKDIR /workspace
 COPY requirements.txt /workspace/requirements.txt
 
+RUN apt-get update && apt-get install -y libgl1 libglib2.0-0 \
+ && rm -rf /var/lib/apt/lists/*
+
 # Met à jour pip et installe les dépendances du projet
 RUN python -m pip install --upgrade pip wheel setuptools \
  && pip install -r /workspace/requirements.txt

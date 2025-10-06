@@ -26,3 +26,5 @@ kds
 setuptools
 # images processing
 opencv-contrib-python
+# shap for analysis result cnn ou dense model
+shap
