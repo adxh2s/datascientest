@@ -9,31 +9,65 @@ import statsmodels.api as sm
 # Ajout en local
 from IPython.display import display
 
-# (b) Charger les données contenues dans le fichier portland_v2.csv. Faire attention au format de l'index et au type des données avant de passer aux questions suivantes. Vous pouvez vérifier que la série est bien indexée par des données calendaires en affichant l'attribut index de la série.
-
-# df = pd.read_csv('data/portland_timeseries.csv', index_col=0, parse_dates=True)
-df = pd.read_csv('data/total_rides_2.csv') #, index_col=0, parse_dates=True)
+# (b) Charger les données contenues dans le fichier portland_v2.csv. Faire attention au format de l'index et au type des données avant de passer aux questions suivantes. 
+# Vous pouvez vérifier que la série est bien indexée par des données calendaires en affichant l'attribut index de la série.
+df = pd.read_csv('data/portland_timeseries.csv', index_col=0, parse_dates=True)
 display(df.head())
 display(df.info())
 display(df.index)
 
-# Regroupement par date et somme sur les riders
-df = df.groupby('date', as_index=False)['riders'].sum()
-# Changement du type de l'index en DatetimeIndex
-df.index = pd.to_datetime(df.index)
-# Conversion de la colonne date au format datetime
-df['date'] = pd.to_datetime(df['date'])
-# Conversion de la colonne riders au format int64
-df['riders'] = df['riders'].astype('int64')
-# Mise en place de la colonne date en index
-df = df.set_index('date')
+# Test local avec un autre fichier
+# df = pd.read_csv('data/total_rides_2.csv') #, index_col=0, parse_dates=True)
+# display(df.describe())
+# # on fait un fillna sur la colonne riders avec la valeur 0
+# df['riders'] = df['riders'].fillna(0)
+# # on supprime les jours avec le tiret (format yyyy-mm-dd --> yyyy-mm)
+# df['date'] = df['date'].astype(str).str[:-3]
+# # conversion de la colonne date au format datetime
+# df['date'] = pd.to_datetime(df['date'])
+# # Conversion de la colonne riders au format int64
+# df['riders'] = df['riders'].astype('int64')
 
-display(df.head())
-display(df.info())
+# # Première méthode : Grouper avec Grouper freq='M' (fin de mois)
+# df = df.groupby(pd.Grouper(key='date', freq='ME'))['riders'].sum().to_frame()
+# display(df.head())
+# display(df.info())
+# display(df.index)
+
+# # moyenne glissante sur 3 mois centrée pour les valeurs à 0
+# s = df['riders']
+# zero_mask = s == 0
+
+# # Calcul de la moyenne glissante (rolling sur 3, centrée, skipna)
+# s_interp = s.mask(zero_mask, (s.shift(1) + s.shift(-1)) / 2)
+# df['riders'] = s_interp
+
+# first = df.index.min()
+# last = df.index.max()
+# print(first, last)
+
+# # Nombre attendu de mois entre les deux bornes
+# expected_months = (last.year - first.year) * 12 + (last.month - first.month) + 1
+# observed_months = len(df)
+# if observed_months == expected_months:
+#     print("Tous les mois sont présents et consécutifs.")
+# else:
+#     print(f"Il manque {expected_months - observed_months} mois dans la séquence.")
+
+# display(df[df['riders'] <= 0])
+
+# # Lignes dont l'année est 2014
+# mask = df.index.year == 2014
+# df_2014 = df.loc[mask]
+
+# # Toutes les autres années
+# mask = df.index.year != 2014
+# df = df.loc[mask]
+
 
 # (c) Afficher la série entière sur un graphique.
 plt.plot(df)
-plt.title('Copenhagen Bike Riders Over Time')
+plt.title('Portland Riders Over Time')
 plt.show()
 
 
@@ -134,7 +168,9 @@ print(p_value)  # p-valeur bien inférieure à 0.05, on peut considérer la sér
 
 # La série est bien stationnaire
 
-# l) Utiliser les fonctions plot_acf et plot_pacf du sous module statsmodels.graphics.tsaplots pour tracer l'autocorrélogramme simple (ACF) et le partiel (PACF) de la série datalog_2. Fixer lags à 36.
+# l) Utiliser les fonctions plot_acf et plot_pacf du sous module statsmodels.graphics.tsaplots 
+# pour tracer l'autocorrélogramme simple (ACF) et le partiel (PACF) de la série datalog_2. 
+# Fixer lags à 36.
 
 from statsmodels.graphics.tsaplots import plot_pacf, plot_acf
 
@@ -210,17 +246,17 @@ plt.show()
 
 # (p) Afficher sur un même graphique les prédictions, les valeurs réelles, et si vous le souhaitez, l'intervalle de confiance des prédictions.
 # df_12 = pd.read_csv('portland_8182.csv', index_col=0, parse_dates=True)
-# display(df_12.index)
-# # Préparation du graphique
-# fig, ax = plt.subplots(figsize = (15,5))
-# # affichage de la série initiale
-# plt.plot(df_12)
-# # Moyenne prédite
-# prediction['mean'].plot(ax = ax, style = 'k--')
-# # Intervalle de confiance
-# ax.fill_between(prediction.index, prediction['mean_ci_lower'], prediction['mean_ci_upper'], color='k', alpha=0.1)
-# plt.title('Prévisions SARIMA pour les 12 prochains mois')
-# plt.show()
+display(df_2014.index)
+# Préparation du graphique
+fig, ax = plt.subplots(figsize = (15,5))
+# affichage de la série initiale
+plt.plot(df_2014)
+# Moyenne prédite
+prediction['mean'].plot(ax = ax, style = 'k--')
+# Intervalle de confiance
+ax.fill_between(prediction.index, prediction['mean_ci_lower'], prediction['mean_ci_upper'], color='k', alpha=0.1)
+plt.title('Prévisions SARIMA pour les 12 prochains mois')
+plt.show()
 
 
 
@@ -236,8 +272,14 @@ yhat = prediction['mean']
 ci_lower = prediction['mean_ci_lower']
 ci_upper = prediction['mean_ci_upper']
 
+# verification des index --> dans l'exercice, on doit prendre le df_12...
+print(df.index.min(), df.index.max())
+print(datalog.index.min(), datalog.index.max())
+print(df_2014.index.min(), df_2014.index.max())
+print(yhat.index.min(), yhat.index.max())
+
 # Vérités terrain alignées (mêmes dates que les prévisions)
-y_true = df.loc[yhat.index].squeeze()
+y_true = df_2014.loc[yhat.index].squeeze()
 
 # (p) Erreur de prédiction point à point
 err = y_true - yhat  # >0 sous-évaluation, <0 surévaluation
@@ -257,7 +299,7 @@ df.plot(ax=ax, label='Observé')
 yhat.plot(ax=ax, label='Prévu')
 ax.fill_between(yhat.index, ci_lower, ci_upper, color='C1', alpha=0.2, label='IC 95%')
 ax.legend()
-
+plt.show()
 
 
 
